@@ -1,0 +1,23 @@
+project_root: /mounts/u-amo-d1/adibm-data/projects/latin
+data_path: data/keyed/canon/
+# num_files: 10
+num_files : None
+save_steps : 50
+eval_steps : 50
+train_batch_size: 30
+# eval_batch_size: 18
+eval_batch_size: 9
+gradient_accumulation_steps: 64
+tokenizer_name: roberta-base 
+model_name: outputs/2024-03-10/21-36-31/train
+# model_name: outputs/2024-03-10/21-36-31/outputs
+# model_name: silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin
+# model_path: outputs/2024-03-05/01-23-41/results
+model_path: ""
+max_length: 512
+mlm_probability: 0.15
+early_stopping_patience: 4
+epochs: 200
+# epochs: 1
+data_split_percentage: 1
+out_path: results

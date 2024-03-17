@@ -1,0 +1,18 @@
+project_root: /mounts/u-amo-d1/adibm-data/projects/latin
+# data_path: data/
+data_path: data/keyed/
+num_files: 50
+# num_files : None 
+train_batch_size: 6
+# eval_batch_size: 18
+eval_batch_size: 10
+gradient_accumulation_steps: 1
+model_name: silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin
+max_length: 512
+mlm_probability: 0.15
+fp16: True
+early_stopping_patience: 3
+epochs: 1
+# model_path: silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin
+model_path: outputs/2024-03-05/01-23-41/results
+data_split_percentage: 1

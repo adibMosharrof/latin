@@ -1,0 +1,7 @@
+outputs/
+models/
+.vscode/
+__MACOSX/
+data/
+envs/
+__pycache__/

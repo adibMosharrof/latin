@@ -1,0 +1,28 @@
+project_root: /mounts/u-amo-d1/adibm-data/projects/latin
+pretrain_data:
+  - 
+    - data/cltk/lat/text/lat_text_latin_library
+    - .txt
+    - 1
+data_path: data/
+# num_files: 50
+num_files : None
+save_steps : 20
+eval_steps : 10
+bert_path: models/latin_bert
+tokenizer_path: models/latin_bert/latin.subword.encoder
+train_batch_size: 22
+# eval_batch_size: 18
+eval_batch_size: 60
+gradient_accumulation_steps: 64
+model_name: pstroe/roberta-base-latin-cased 
+# model_name: outputs/2024-02-27/23-01-39/pretrain
+max_length: 512
+mlm_probability: 0.15
+fp16: True
+early_stopping_patience: 4
+train_epochs: 300
+pretrain_epochs: 300
+data_split_percentage: 1
+pretrain_out_path: "pretrain"
+train_out_path: "train"
