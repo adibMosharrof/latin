@@ -13,7 +13,13 @@ from sentence_transformers.evaluation import (
     EmbeddingSimilarityEvaluator,
     LabelAccuracyEvaluator,
 )
-from sentence_transformers import SentenceTransformer, losses, models
+from sentence_transformers import (
+    SentenceTransformer,
+    losses,
+    models,
+    CrossEncoder,
+    util,
+)
 from bertopic.backend import BaseEmbedder
 from bertopic.cluster import BaseCluster
 from bertopic.vectorizers import ClassTfidfTransformer
@@ -29,6 +35,7 @@ class Contrastive:
     def __init__(self, cfg):
         self.cfg = cfg
         self.cfg.project_root = Path(self.cfg.project_root)
+        self.log = logging.getLogger(__name__)
 
     def get_stop_words(self):
         path = self.cfg.project_root / "data" / "stopwords_latin.json"
@@ -92,7 +99,7 @@ class Contrastive:
             label_map[label] = i
         return label_map
 
-    def test(self, test_examples, embedding_model, label_map):
+    def test(self, train_examples, test_examples, embedding_model, label_map):
 
         # empty_embedding_model = BaseEmbedder()
         empty_dimensionality_model = BaseDimensionalityReduction()
@@ -112,7 +119,7 @@ class Contrastive:
 
         docs, y = [], []
         value_map = {value: key for key, value in label_map.items()}
-        for item in test_examples:
+        for item in train_examples:
             docs.append(item.text)
             y.append(label_map[item.label])
         embeddings = embedding_model.encode(docs, show_progress_bar=True)
@@ -125,15 +132,25 @@ class Contrastive:
         # Assign original classes to our topics
         df = topic_model.get_topic_info()
         df["Class"] = df.Topic.map(mappings)
+        test_docs, test_y = [], []
+        for item in train_examples:
+            test_docs.append(item.text)
+            test_y.append(label_map[item.label])
+        test_y_mapped = []
+        for val in test_y:
+            try:
+                test_y_mapped.append(mappings[val])
+            except KeyError:
+                test_y_mapped.append(-1)
         topic_distr, topic_token_distr = topic_model.approximate_distribution(
             # docs, batch_size=1000, calculate_tokens=True, use_embedding_model=True
-            docs,
-            calculate_tokens=True,
+            test_docs,
+            calculate_tokens=False,
             use_embedding_model=True,
         )
         log = logging.getLogger(__name__)
         for k in [1, 2, 3, 4, 5]:
-            acc = top_k_accuracy_score(y_mapped, topic_distr, k=k)
+            acc = top_k_accuracy_score(test_y_mapped, topic_distr, k=k)
             acc_str = f"Top {k} accuracy: {acc}"
             log.info(acc_str)
             print(acc_str)
@@ -151,6 +168,86 @@ class Contrastive:
             log.info(f"Probabilities: {top_preds_probs[i]}")
             log.info("-" * 25)
 
+    def precision_at_k(self, actual_results, retrieved_results, k=1):
+        """
+        Calculate precision at k.
+
+        Args:
+            actual_results (list): List of actual relevant items.
+            retrieved_results (list): List of retrieved items.
+            k (int): Number of top items to consider.
+
+        Returns:
+            float: Precision at k.
+        """
+        if actual_results is None or retrieved_results is None:
+            return 0
+        if len(retrieved_results) < k:
+            k = len(retrieved_results)
+        if k <= 0:
+            raise ValueError("k must be a positive integer")
+        values_to_consider = retrieved_results[:k]
+        result = 0
+        if actual_results in values_to_consider:
+            result = 1
+        return result
+
+    def mean_precision_at_k(self, actual_results, retrieved_results, k=1):
+        score = []
+        for true, pred in zip(actual_results, retrieved_results):
+            score.append(self.precision_at_k(true, pred, k))
+        return np.mean(score)
+
+    def test_semantic(self, train_examples, test_examples, embedding_model, label_map):
+        bi_encoder = SentenceTransformer(embedding_model)
+        bi_encoder.max_seq_length = 512
+        cross_encoder = CrossEncoder(embedding_model)
+        top_k = 32
+        corpus_embeddings = bi_encoder.encode(
+            [item.text for item in train_examples],
+            convert_to_tensor=True,
+            show_progress_bar=True,
+        )
+
+        test_embeddings = bi_encoder.encode(
+            [item.text for item in test_examples],
+            convert_to_tensor=True,
+            show_progress_bar=True,
+        )
+        all_hits = util.semantic_search(test_embeddings, corpus_embeddings, top_k=top_k)
+        test_labels = [label_map[item.label] for item in test_examples]
+        corpus_labels = [label_map[item.label] for item in train_examples]
+        for query, hits in zip(test_examples, all_hits):
+            cross_inp = [
+                [query.text, train_examples[hit["corpus_id"]].text] for hit in hits
+            ]
+            cross_scores = cross_encoder.predict(cross_inp)
+            for idx in range(len(cross_scores)):
+                hits[idx]["cross-score"] = cross_scores[idx]
+                hits[idx]["corpus_label"] = corpus_labels[hits[idx]["corpus_id"]]
+
+        corpus_labels = []
+        for hits in all_hits:
+            sorted(hits, key=lambda x: x["score"])
+            corpus_labels.append([hit["corpus_label"] for hit in hits])
+        print("Scores with retrieval")
+        self.log.info("Scores with retrieval")
+        self.get_mean_precisions(test_labels, corpus_labels)
+        for hits in all_hits:
+            sorted(hits, key=lambda x: x["cross-score"])
+
+        print("Scores with re-rank")
+        self.log.info("Scores with re-rank")
+        self.get_mean_precisions(test_labels, corpus_labels)
+        a = 1
+
+    def get_mean_precisions(self, reference, preds):
+        for k in [1, 2, 3, 4, 5]:
+            acc = self.mean_precision_at_k(reference, preds, k=k)
+            acc_str = f"Top {k} accuracy: {acc}"
+            self.log.info(acc_str)
+            print(acc_str)
+
     def old_run(self):
         texts = self.get_texts()
         texts = texts[: int(len(texts) * self.cfg.data_split_percentage)]
@@ -163,7 +260,7 @@ class Contrastive:
         )
         if self.cfg.model_path:
             model = SentenceTransformer(
-                str(self.cfg.project_root / self.cfg.model_path)
+                str(self.cfg.project_root / self.cfg.model_path),
             )
         else:
             word_embedding_model = models.Transformer(
@@ -189,9 +286,21 @@ class Contrastive:
                 warmup_steps=100,
                 output_path=self.cfg.out_path,
             )
-        self.test(
-            embedding_model=model, test_examples=test_examples, label_map=label_map
+        self.test_semantic(
+            # embedding_model=model,
+            # embedding_model=str(self.cfg.project_root / self.cfg.model_path),
+            embedding_model="silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin",
+            train_examples=train_examples,
+            test_examples=test_examples,
+            label_map=label_map,
         )
+
+        # self.test(
+        #     embedding_model=model,
+        #     train_examples=train_examples,
+        #     test_examples=test_examples,
+        #     label_map=label_map,
+        # )
 
 
 @hydra.main(config_path="config", config_name="contrastive")
