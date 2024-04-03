@@ -1,4 +1,5 @@
 import itertools
+import os
 from dotmap import DotMap
 import hydra
 import numpy as np
@@ -263,8 +264,14 @@ class Contrastive:
                 str(self.cfg.project_root / self.cfg.model_path),
             )
         else:
+            m_path = self.cfg.project_root / self.cfg.model_name
+            if not m_path.is_dir():
+                m_path = self.cfg.model_name
+
             word_embedding_model = models.Transformer(
-                str(self.cfg.project_root / self.cfg.model_name),
+                # str(self.cfg.project_root / self.cfg.model_name),
+                # self.cfg.model_name,
+                m_path,
                 max_seq_length=self.cfg.max_length,
                 tokenizer_name_or_path=self.cfg.tokenizer_name,
             )
@@ -277,19 +284,20 @@ class Contrastive:
             evaluator = EmbeddingSimilarityEvaluator.from_input_examples(
                 eval_input_examples
             )
-
+            out_path = str(Path(os.getcwd()) / self.cfg.out_path)
             model.fit(
                 train_objectives=[(train_dl, train_loss)],
                 epochs=self.cfg.epochs,
                 evaluator=evaluator,
                 evaluation_steps=self.cfg.eval_steps,
                 warmup_steps=100,
-                output_path=self.cfg.out_path,
+                output_path=out_path,
             )
+            model.save(out_path)
         self.test_semantic(
             # embedding_model=model,
-            # embedding_model=str(self.cfg.project_root / self.cfg.model_path),
-            embedding_model="silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin",
+            embedding_model=out_path,
+            # embedding_model="silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin",
             train_examples=train_examples,
             test_examples=test_examples,
             label_map=label_map,
