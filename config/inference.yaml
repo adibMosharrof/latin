@@ -1,0 +1,4 @@
+project_root: /mounts/u-amo-d1/adibm-data/projects/latin
+model_path: outputs/2024-03-28/14-13-03/pretrain
+data_split_percentage: 1
+data_path: data/keyed/canon/
