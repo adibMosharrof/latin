@@ -1,0 +1,19 @@
+project_root: /mounts/u-amo-d1/adibm-data/projects/latin
+# model_path: outputs/2024-04-03/03-40-58/results
+data_split_percentage: 1
+data_path: data/keyed/canon/
+max_length: 512
+data_stats_path: data/data_stats/data_stats.csv
+test_out_path: data/test_data.csv
+train_out_path: data/train_data.csv
+mlm_model_path: outputs/2024-03-30/01-47-55/train
+tokenizer_name: silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin
+train_data_split_percentage: 1
+train_batch_size: 30
+eval_batch_size: 9
+epochs: 200
+# epochs: 1
+eval_steps : 50
+out_path: results
+# contrastive_model_path: ""
+contrastive_model_path: outputs/2024-04-30/03-16-04/results

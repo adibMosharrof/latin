@@ -18,4 +18,4 @@ epochs: 1
 # model_path: outputs/2024-02-05/22-54-08/results
 model_path: silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin
 # model_path: silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-latin
-data_split_percentage: 1
+data_split_percentage: 0.1

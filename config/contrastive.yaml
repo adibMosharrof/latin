@@ -8,16 +8,20 @@ train_batch_size: 30
 # eval_batch_size: 18
 eval_batch_size: 9
 gradient_accumulation_steps: 64
-tokenizer_name: roberta-base 
-model_name: outputs/2024-03-10/21-36-31/train
-# model_name: outputs/2024-03-10/21-36-31/outputs
-# model_name: silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin
-# model_path: outputs/2024-03-05/01-23-41/results
+# tokenizer_name: roberta-base 
+tokenizer_name: silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin
+# model_name: outputs/2024-03-10/21-36-31/train
+# model_name: outputs/2024-03-19/21-16-07/train
+# model_name: pstroe/roberta-base-latin-cased 
+model_name: silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin
+# model_path: outputs/2024-03-11/23-36-11/results
+# model_path: outputs/2024-03-19/21-16-07/train
+# model_path: silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin
 model_path: ""
 max_length: 512
 mlm_probability: 0.15
 early_stopping_patience: 4
-epochs: 200
+epochs: 1
 # epochs: 1
 data_split_percentage: 1
 out_path: results

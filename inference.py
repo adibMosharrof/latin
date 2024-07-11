@@ -1,6 +1,8 @@
+from dataclasses import dataclass, field
 import logging
 from pathlib import Path
 import random
+from typing import Optional
 
 from dotmap import DotMap
 import hydra
@@ -10,9 +12,29 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer, util, models
 from sentence_transformers.cross_encoder.CrossEncoder import CrossEncoder
 from sklearn.model_selection import train_test_split
-
+import my_utils
 
 random.seed(25)
+
+
+@dataclass
+class ResultsLog:
+    precision_at_k: list[float]
+    file_name: str
+    canon: str
+    k_neighbor_labels: list[str] = field(default_factory=list)
+    k_neighbor_confidence: list[float] = field(default_factory=list)
+    file_content: Optional[str] = None
+    # name: Optional[str] = None
+
+    def __post_init__(self):
+        self.precision_at_k = self.precision_at_k
+        self.file_name = self.file_name
+        self.canon = self.canon
+        self.file_content = self.file_content
+        self.k_neighbor_labels = self.k_neighbor_labels
+        # if not self.name:
+        #     self.name = my_utils.get_name_from_example(self.canon, self.file_name)
 
 
 class Inference:
@@ -34,7 +56,9 @@ class Inference:
             for file in files:
                 with open(file, "r") as f:
                     text = f.read()
-                    all_text.append(DotMap(text=text.strip(), label=canon))
+                    all_text.append(
+                        DotMap(text=text.strip(), label=canon, file_name=file.name)
+                    )
         return all_text
 
     def get_label_map(self, texts):
@@ -94,26 +118,52 @@ class Inference:
             corpus_labels.append([hit["corpus_label"] for hit in hits])
         print("Scores with retrieval")
         self.log.info("Scores with retrieval")
-        self.get_mean_precisions(test_labels, corpus_labels)
-        for hits in all_hits:
-            sorted(hits, key=lambda x: x["cross-score"])
+        scores_at_k = self.get_mean_precisions(test_labels, corpus_labels)
+        # for hits in all_hits:
+        #     sorted(hits, key=lambda x: x["cross-score"])
 
-        print("Scores with re-rank")
-        self.log.info("Scores with re-rank")
-        self.get_mean_precisions(test_labels, corpus_labels)
+        # print("Scores with re-rank")
+        # self.log.info("Scores with re-rank")
+        # self.get_mean_precisions(test_labels, corpus_labels)
+        results_logs = []
+        k = 5
+        for i, hits in enumerate(all_hits):
+            prec_at_k = []
+            for k in scores_at_k.keys():
+                prec_at_k.append(scores_at_k[k][i])
+            top_k_neighbors = [train_examples[hit["corpus_id"]] for hit in hits[:k]]
+            top_k_confidence = [hit["score"] for hit in hits[:k]]
+            result_log = ResultsLog(
+                precision_at_k=prec_at_k,
+                file_name=test_examples[i].file_name,
+                canon=test_examples[i].label,
+                file_content=test_examples[i].text,
+                k_neighbor_labels=[
+                    my_utils.get_name_from_example(neighbor.label, neighbor.file_name)
+                    for neighbor in top_k_neighbors
+                ],
+                k_neighbor_confidence=top_k_confidence,
+            )
+            results_logs.append(result_log)
+        df = pd.DataFrame(results_logs)
+        df.to_csv("result_log.csv", index=False)
+        a = 1
 
     def get_mean_precisions(self, reference, preds):
+        scores_at_k = {}
         for k in [1, 2, 3, 4, 5]:
-            acc = self.mean_precision_at_k(reference, preds, k=k)
+            acc, scores = self.mean_precision_at_k(reference, preds, k=k)
+            scores_at_k[k] = scores
             acc_str = f"Top {k} accuracy: {acc}"
             self.log.info(acc_str)
             print(acc_str)
+        return scores_at_k
 
     def mean_precision_at_k(self, actual_results, retrieved_results, k=1):
-        score = []
+        scores = []
         for true, pred in zip(actual_results, retrieved_results):
-            score.append(self.precision_at_k(true, pred, k))
-        return np.mean(score)
+            scores.append(self.precision_at_k(true, pred, k))
+        return np.mean(scores), scores
 
     def precision_at_k(self, actual_results, retrieved_results, k=1):
         """

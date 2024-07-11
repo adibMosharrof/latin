@@ -250,7 +250,7 @@ class Contrastive:
             print(acc_str)
 
     def old_run(self):
-        texts = self.get_texts()
+        text = self.get_texts()
         texts = texts[: int(len(texts) * self.cfg.data_split_percentage)]
         label_map = self.get_label_map(texts)
         train_examples, other_examples = train_test_split(texts, train_size=0.7)

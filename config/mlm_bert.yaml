@@ -21,8 +21,10 @@ max_length: 512
 mlm_probability: 0.15
 fp16: True
 early_stopping_patience: 4
-train_epochs: 300
-pretrain_epochs: 300
+# train_epochs: 300
+# pretrain_epochs: 300
+train_epochs: 1
+pretrain_epochs: 1
 data_split_percentage: 1
 pretrain_out_path: "pretrain"
 train_out_path: "train"
