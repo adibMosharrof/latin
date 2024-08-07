@@ -275,7 +275,7 @@ class CanonTrainer:
             )
 
     def run(self):
-        if (self.cfg.project_root / self.cfg.train_out_path).exists():
+        if not (self.cfg.project_root / self.cfg.train_out_path).exists():
             cd = CreateData(self.cfg)
             cd.run()
         train_data = pd.read_csv(self.cfg.project_root / self.cfg.train_out_path)

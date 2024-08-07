@@ -42,11 +42,11 @@ class DataStats:
                 filtered_canons.append(name)
 
         pd.DataFrame(all_data_stats).to_csv(
-            self.cfg.project_root / "data" / "data_stats" / "data_stats.csv",
+            self.cfg.project_root / "data" / "data_stats" / self.cfg.stats_out_path,
             index=False,
         )
         pd.DataFrame(filtered_canons, columns=["canon"]).to_csv(
-            self.cfg.project_root / "data" / "data_stats" / "filtered_canons.csv",
+            self.cfg.project_root / "data" / "data_stats" / self.cfg.filtered_csvs,
             index=False,
         )
 
@@ -54,7 +54,10 @@ class DataStats:
 if __name__ == "__main__":
     cfg = DotMap(
         project_root=Path("/mounts/u-amo-d1/adibm-data/projects/latin"),
-        data_path="data/keyed/canon/",
+        # data_path="data/keyed/canon/",
+        data_path="data/keyed/decrExcerpt/",
+        stats_out_path="decr_data_stats.csv",
+        filtered_csvs="filtered_decrs.csv",
     )
 
     ds = DataStats(cfg)
